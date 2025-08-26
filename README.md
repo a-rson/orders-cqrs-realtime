@@ -354,3 +354,99 @@ Fill in buyer, items, and optionally upload a file
 Click Create → redirected to /orders
 
 After ~5s, status changes from PENDING to PAID without reload
+
+
+
+
+Manual Smoke Test (end-to-end)
+0) One-time check
+
+From repo root, confirm files exist:
+
+ls infra/docker-compose.yml apps/api apps/web >/dev/null
+
+
+Make sure apps/api/.env is present with for example:
+
+MONGO_URL=mongodb://localhost:27017/orders
+PORT=3001
+CORS_ORIGIN=http://localhost:3000
+
+1) Start database (Docker)
+# terminal A (keep running)
+docker compose -f infra/docker-compose.yml up -d
+docker ps | grep -E 'mongo|mongo-express'
+# optional UI: http://localhost:8081
+
+2) Install dependencies (monorepo)
+# terminal B (repo root)
+pnpm install
+
+3) Run the API (NestJS)
+pnpm --filter api dev
+# expect: Nest application successfully started on http://localhost:3001 with global prefix /api
+
+4) Run the Web (Next.js)
+# terminal C
+pnpm --filter web dev
+# open http://localhost:3000/orders
+
+A. Test create order (idempotency + projection)
+
+Create order (1st call):
+
+curl -i -XPOST http://localhost:3001/api/orders \
+  -H 'Content-Type: application/json' \
+  -d '{"requestId":"r1","tenantId":"t-123","buyer":{"email":"alice@example.com","name":"Alice"},"items":[{"sku":"SKU-1","qty":2,"price":49.99}]}'
+# expect: 201 Created + {"orderId":"ord_..."}
+
+
+Duplicate call (idempotency):
+
+curl -i -XPOST http://localhost:3001/api/orders \
+  -H 'Content-Type: application/json' \
+  -d '{"requestId":"r1","tenantId":"t-123","buyer":{"email":"alice@example.com","name":"Alice"},"items":[{"sku":"SKU-1","qty":2,"price":49.99}]}'
+# expect: 200 OK + header x-idempotent-replayed: true + same orderId
+
+
+List orders (projection):
+
+curl -s 'http://localhost:3001/api/orders?tenantId=t-123&page=1&limit=10' | jq
+# expect: array with the order; status = PENDING initially
+
+B. Test realtime WS auto-refresh
+
+Keep http://localhost:3000/orders open in the browser.
+
+Create another order (new requestId):
+
+curl -s -XPOST http://localhost:3001/api/orders \
+  -H 'Content-Type: application/json' \
+  -d '{"requestId":"r2","tenantId":"t-123","buyer":{"email":"alice@example.com","name":"Alice"},"items":[{"sku":"SKU-2","qty":1,"price":10}]}'
+
+
+After ~5s the row should flip from PENDING to PAID automatically (via WS event order.updated).
+
+C. Test presign upload flow
+
+Presign request:
+
+PRES=$(curl -s -XPOST http://localhost:3001/api/uploads/presign \
+  -H 'Content-Type: application/json' \
+  -d '{"tenantId":"t-123","filename":"invoice.pdf","contentType":"application/pdf","size":6}')
+URL=$(echo "$PRES" | jq -r .url)
+SK=$(echo "$PRES" | jq -r .storageKey)
+
+
+Upload file (mock PUT sink):
+
+echo "hello" > /tmp/invoice.pdf
+curl -i -T /tmp/invoice.pdf "$URL" -H 'Content-Type: application/pdf'
+# expect: 200 OK + {"ok":true,"storageKey":"...","size":6}
+
+
+Create order referencing storageKey:
+
+curl -s -XPOST http://localhost:3001/api/orders \
+  -H 'Content-Type: application/json' \
+  -d "{\"requestId\":\"r3\",\"tenantId\":\"t-123\",\"buyer\":{\"email\":\"alice@example.com\",\"name\":\"Alice\"},\"items\":[{\"sku\":\"SKU-3\",\"qty\":1,\"price\":9.99}],\"attachment\":{\"filename\":\"invoice.pdf\",\"contentType\":\"application/pdf\",\"size\":6,\"storageKey\":\"$SK\"}}"

@@ -25,6 +25,17 @@ export class OrdersService {
   async create(
     dto: CreateOrderDto,
   ): Promise<{ orderId: string; duplicated: boolean }> {
+    // fast-path idempotency: if already exists, return it
+    const existingFirst = await this.orderModel
+      .findOne(
+        { tenantId: dto.tenantId, requestId: dto.requestId },
+        { orderId: 1, _id: 0 },
+      )
+      .lean();
+    if (existingFirst) {
+      return { orderId: existingFirst.orderId, duplicated: true };
+    }
+
     const total = dto.items.reduce((s, it) => s + it.qty * it.price, 0);
 
     const doc = new this.orderModel({
@@ -57,27 +68,29 @@ export class OrdersService {
           : undefined,
       });
 
-      // update status mock
-      setTimeout(async () => {
-        try {
-          await this.orderModel.updateOne(
-            { orderId: doc.orderId, tenantId: doc.tenantId },
-            { $set: { status: 'PAID' } },
-          );
-          await this.orderReadModel.updateOne(
-            { orderId: doc.orderId, tenantId: doc.tenantId },
-            { $set: { status: 'PAID' } },
-          );
-          this.gateway.emitOrderUpdated(doc.tenantId, {
-            orderId: doc.orderId,
-            status: 'PAID',
-          });
+      if (process.env.NODE_ENV !== 'test') {
+        // update status mock
+        setTimeout(async () => {
+          try {
+            await this.orderModel.updateOne(
+              { orderId: doc.orderId, tenantId: doc.tenantId },
+              { $set: { status: 'PAID' } },
+            );
+            await this.orderReadModel.updateOne(
+              { orderId: doc.orderId, tenantId: doc.tenantId },
+              { $set: { status: 'PAID' } },
+            );
+            this.gateway.emitOrderUpdated(doc.tenantId, {
+              orderId: doc.orderId,
+              status: 'PAID',
+            });
 
-          console.log(`[orders] order.updated ${doc.orderId} -> PAID`);
-        } catch (err) {
-          console.error('[orders] status update failed', err);
-        }
-      }, 5000);
+            console.log(`[orders] order.updated ${doc.orderId} -> PAID`);
+          } catch (err) {
+            console.error('[orders] status update failed', err);
+          }
+        }, 5000);
+      }
 
       return { orderId: doc.orderId, duplicated: false };
     } catch (e: any) {
