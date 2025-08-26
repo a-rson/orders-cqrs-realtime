@@ -1,0 +1,11 @@
+{
+  "name": "orders-cqrs-realtime",
+  "private": true,
+  "packageManager": "pnpm@9",
+  "workspaces": ["apps/*"],
+  "scripts": {
+    "dev": "echo \"Run apps/api and apps/web separately\"",
+    "build": "echo \"TBD\"",
+    "start": "echo \"TBD\""
+  }
+}
