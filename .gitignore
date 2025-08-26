@@ -1,4 +1,30 @@
+# dependencies
 node_modules/
+
+# env files
 .env*
+!.env.example
+
+# build output
+dist/
+.next/
+out/
+
+# logs
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# test coverage
+coverage/
+
+# editor / system
 .DS_Store
+.idea/
+.vscode/
+Thumbs.db
+
+# local
 *snp*
