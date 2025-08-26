@@ -55,6 +55,24 @@ export class OrdersService {
           : undefined,
       });
 
+      // update status mock
+      setTimeout(async () => {
+        try {
+          await this.orderModel.updateOne(
+            { orderId: doc.orderId, tenantId: doc.tenantId },
+            { $set: { status: 'PAID' } },
+          );
+          await this.orderReadModel.updateOne(
+            { orderId: doc.orderId, tenantId: doc.tenantId },
+            { $set: { status: 'PAID' } },
+          );
+          // TBD: send event, now just console
+          console.log(`[orders] order.updated ${doc.orderId} -> PAID`);
+        } catch (err) {
+          console.error('status update failed', err);
+        }
+      }, 5000);
+
       return { orderId: doc.orderId, duplicated: false };
     } catch (e: any) {
       // idempotencja: duplicate key na (tenantId, requestId)
