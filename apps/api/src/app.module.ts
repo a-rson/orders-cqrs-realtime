@@ -3,6 +3,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule } from '@nestjs/config';
 import { OrdersModule } from './orders/orders.module';
 import { UploadsModule } from './uploads/uploads.module';
+import { MockUploadController } from './mock-upload.controller';
 
 @Module({
   imports: [
@@ -19,5 +20,6 @@ import { UploadsModule } from './uploads/uploads.module';
     OrdersModule,
     UploadsModule,
   ],
+  controllers: [MockUploadController],
 })
 export class AppModule {}
