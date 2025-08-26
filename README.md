@@ -308,3 +308,49 @@ Docker is running and mongo is healthy.
 apps/api/.env points to mongodb://localhost:27017/orders.
 
 The API listens on :3001 and you’re calling http://localhost:3001/api/....
+
+
+
+Frontend (apps/web)
+
+The frontend is a minimal Next.js 14+ (App Router) app.
+
+Features
+
+SSR orders list at /orders
+
+Fetches from GET /api/orders
+
+Subscribes to WebSocket (order.updated) and auto-refreshes
+
+New order form at /orders/new
+
+Flow: presign → PUT file → POST /api/orders
+
+Shows optimistic order row (PENDING), then auto-updates to PAID from WS
+
+Setup
+
+From repo root:
+
+pnpm --filter web dev
+# open http://localhost:3000/orders
+
+Configuration
+
+apps/web/next.config.ts proxies API calls:
+
+rewrites: [{ source: '/api/:path*', destination: 'http://localhost:3001/api/:path*' }]
+
+
+So the frontend always calls /api/... (Next dev server on 3000 forwards to backend on 3001).
+
+Test flow
+
+Go to http://localhost:3000/orders/new
+
+Fill in buyer, items, and optionally upload a file
+
+Click Create → redirected to /orders
+
+After ~5s, status changes from PENDING to PAID without reload
