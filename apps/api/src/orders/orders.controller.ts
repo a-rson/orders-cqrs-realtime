@@ -1,7 +1,17 @@
-import { Body, Controller, HttpStatus, Post, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpStatus,
+  Post,
+  Query,
+  Res,
+} from '@nestjs/common';
+
 import type { Response } from 'express';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { OrdersService } from './orders.service';
+import { ListOrdersQuery } from './dto/list-orders.query';
 
 @Controller('orders')
 export class OrdersController {
@@ -18,5 +28,10 @@ export class OrdersController {
       return res.status(HttpStatus.OK).json({ orderId });
     }
     return res.status(HttpStatus.CREATED).json({ orderId });
+  }
+
+  @Get()
+  async list(@Query() q: ListOrdersQuery) {
+    return this.orders.list(q);
   }
 }
