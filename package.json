@@ -1,11 +1,15 @@
 {
   "name": "orders-cqrs-realtime",
   "private": true,
-  "packageManager": "pnpm@9",
-  "workspaces": ["apps/*"],
+  "packageManager": "pnpm@10.15.0",
   "scripts": {
-    "dev": "echo \"Run apps/api and apps/web separately\"",
-    "build": "echo \"TBD\"",
-    "start": "echo \"TBD\""
+    "dev": "concurrently -k -n API,WEB \"pnpm --filter api dev\" \"pnpm --filter web dev\"",
+    "dev:api": "pnpm --filter api dev",
+    "dev:web": "pnpm --filter web dev",
+    "build": "pnpm -r build",
+    "start": "concurrently -k -n API,WEB \"pnpm --filter api start\" \"pnpm --filter web start\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
   }
 }
