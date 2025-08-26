@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+  <body>
+    <h1>WS test</h1>
+    <pre id="log"></pre>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script>
+      const log = (m) =>
+        (document.getElementById("log").textContent += m + "\n");
+      const socket = io("http://localhost:3001", {
+        path: "/ws",
+        transports: ["websocket"],
+        auth: { tenantId: "t-123" },
+      });
+      socket.on("connect", () => log("connected: " + socket.id));
+      socket.on("connected", (msg) =>
+        log("server says connected: " + JSON.stringify(msg))
+      );
+      socket.on("order.updated", (evt) =>
+        log("order.updated: " + JSON.stringify(evt))
+      );
+      socket.on("disconnect", (r) => log("disconnected: " + r));
+      socket.on("connect_error", (e) => log("connect_error: " + e.message));
+    </script>
+  </body>
+</html>

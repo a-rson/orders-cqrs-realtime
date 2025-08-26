@@ -6,6 +6,7 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { OrderWrite, OrderWriteDocument } from './schemas/order-write.schema';
 import { OrderRead, OrderReadDocument } from './schemas/order-read.schema';
 import { ListOrdersQuery } from './dto/list-orders.query';
+import { OrdersGateway } from './orders.gateway';
 
 function genOrderId() {
   return 'ord_' + Math.random().toString(36).slice(2, 10);
@@ -18,6 +19,7 @@ export class OrdersService {
     private readonly orderModel: Model<OrderWriteDocument>,
     @InjectModel(OrderRead.name)
     private readonly orderReadModel: Model<OrderReadDocument>,
+    private readonly gateway: OrdersGateway,
   ) {}
 
   async create(
@@ -66,10 +68,14 @@ export class OrdersService {
             { orderId: doc.orderId, tenantId: doc.tenantId },
             { $set: { status: 'PAID' } },
           );
-          // TBD: send event, now just console
+          this.gateway.emitOrderUpdated(doc.tenantId, {
+            orderId: doc.orderId,
+            status: 'PAID',
+          });
+
           console.log(`[orders] order.updated ${doc.orderId} -> PAID`);
         } catch (err) {
-          console.error('status update failed', err);
+          console.error('[orders] status update failed', err);
         }
       }, 5000);
 

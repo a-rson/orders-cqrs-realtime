@@ -4,6 +4,7 @@ import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
 import { OrderWrite, OrderWriteSchema } from './schemas/order-write.schema';
 import { OrderRead, OrderReadSchema } from './schemas/order-read.schema';
+import { OrdersGateway } from './orders.gateway';
 
 @Module({
   imports: [
@@ -13,7 +14,7 @@ import { OrderRead, OrderReadSchema } from './schemas/order-read.schema';
     ]),
   ],
   controllers: [OrdersController],
-  providers: [OrdersService],
+  providers: [OrdersService, OrdersGateway],
   exports: [],
 })
 export class OrdersModule {}
